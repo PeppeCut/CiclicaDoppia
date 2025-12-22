@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description"
+        content="Interactive cryptocurrency candlestick charts with zoom, pan, and stretch capabilities">
+    <title>Crypto Candlestick Charts - BTC, SUI, Solana & More</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <h1>Crypto Candlestick Charts</h1>
+            <p class="subtitle">Interactive charts with zoom, pan & stretch</p>
+        </header>
+
+        <div class="controls-panel">
+            <div style="display:flex; flex-wrap:wrap; gap:1rem; align-items:center; width:100%;">
+
+                <!-- Crypto & Timeframe -->
+                <div style="display:flex; gap:0.5rem; align-items:center;">
+                    <select id="crypto-select" class="crypto-selector" style="padding:0.3rem; min-width:140px;">
+                        <optgroup label="Top Cryptos">
+                            <option value="BTCUSDT">BTC</option>
+                            <option value="ETHUSDT">ETH</option>
+                            <option value="BNBUSDT">BNB</option>
+                            <option value="SOLUSDT">SOL</option>
+                            <option value="XRPUSDT">XRP</option>
+                            <option value="SUIUSDT" selected>SUI</option>
+                        </optgroup>
+                    </select>
+                    <div class="timeframe-buttons">
+                        <button class="tf-btn active" data-timeframe="1m" style="padding:0.3rem 0.5rem;">1m</button>
+                        <button class="tf-btn" data-timeframe="5m" style="padding:0.3rem 0.5rem;">5m</button>
+                        <button class="tf-btn" data-timeframe="15m" style="padding:0.3rem 0.5rem;">15m</button>
+                        <button class="tf-btn" data-timeframe="1h" style="padding:0.3rem 0.5rem;">1h</button>
+                        <button class="tf-btn" data-timeframe="4h" style="padding:0.3rem 0.5rem;">4h</button>
+                    </div>
+                </div>
+
+                <div style="width:1px; height:24px; background:rgba(255,255,255,0.1);"></div>
+
+                <!-- Toggles Group 1: Cycles -->
+                <div style="display:flex; gap:1rem; align-items:center;">
+                    <label
+                        style="cursor: pointer; display: flex; align-items: center; gap: 4px; font-size: 0.8rem; color:#3b82f6;">
+                        <input type="checkbox" id="show-index-cycles" checked> Index (L-H-L)
+                    </label>
+                    <label
+                        style="cursor: pointer; display: flex; align-items: center; gap: 4px; font-size: 0.8rem; color:#ef4444;">
+                        <input type="checkbox" id="show-inverse-cycles"> Inverse (H-L-H)
+                    </label>
+                </div>
+
+                <div style="width:1px; height:24px; background:rgba(255,255,255,0.1);"></div>
+
+                <!-- Toggles Group 2: Visuals -->
+                <div style="display:flex; gap:0.8rem; align-items:center;">
+                    <label style="font-size: 0.8rem; color:#9ca3af; display:flex; align-items:center; gap:3px;"><input
+                            type="checkbox" id="show-labels" checked> Labels</label>
+                    <label style="font-size: 0.8rem; color:#9ca3af; display:flex; align-items:center; gap:3px;"><input
+                            type="checkbox" id="show-parabola" checked> Parabola</label>
+                    <label style="font-size: 0.8rem; color:#9ca3af; display:flex; align-items:center; gap:3px;"><input
+                            type="checkbox" id="show-projections" checked> Proj</label>
+                    <label style="font-size: 0.8rem; color:#9ca3af; display:flex; align-items:center; gap:3px;"><input
+                            type="checkbox" id="use-momentum-rule" checked> Mom Filter</label>
+                </div>
+
+                <div style="width:1px; height:24px; background:rgba(255,255,255,0.1);"></div>
+
+                <!-- Custom Cycle Range -->
+                <div style="display:flex; gap:0.5rem; align-items:center;">
+                    <span style="font-size: 0.75rem; color:#9ca3af;">Range:</span>
+                    <input type="number" id="custom-min" value="24" min="5" max="200"
+                        style="width: 45px; background: rgba(255,255,255,0.05); border: 1px solid rgba(99,102,241,0.3); color: white; padding: 0.2rem 0.3rem; border-radius: 4px; font-size: 0.8rem; text-align: center;">
+                    <span style="font-size: 0.75rem; color:#9ca3af;">-</span>
+                    <input type="number" id="custom-max" value="44" min="5" max="200"
+                        style="width: 45px; background: rgba(255,255,255,0.05); border: 1px solid rgba(99,102,241,0.3); color: white; padding: 0.2rem 0.3rem; border-radius: 4px; font-size: 0.8rem; text-align: center;">
+                    <span style="font-size: 0.75rem; color:#9ca3af;">bars</span>
+                </div>
+
+                <div style="flex:1;"></div>
+
+                <!-- Actions -->
+                <div style="display:flex; gap:0.5rem;">
+                    <button id="reset-btn" class="action-btn" style="padding: 0.3rem 0.6rem;">Reset</button>
+                    <button id="refresh-btn" class="action-btn" style="padding: 0.3rem 0.6rem;">Refresh</button>
+                </div>
+            </div>
+
+            <!-- Hidden inputs needed for JS logic preservation -->
+            <div style="display:none;">
+                <input type="number" id="mom-cycs" value="50">
+                <input type="number" id="mom-lbl" value="5">
+                <input type="number" id="mom-lbr" value="5">
+                <input type="number" id="mom-min" value="5">
+                <input type="number" id="mom-max" value="60">
+                <input type="checkbox" id="show-min" checked>
+                <input type="checkbox" id="priority-24-bars" checked>
+                <button id="manual-mode-btn">Set Manual</button>
+                <button id="clear-manual-btn">Clear</button>
+            </div>
+        </div>
+
+
+    </div>
+
+    <!-- Index Cycles Stats Panel -->
+    <div id="index-stats-panel" class="cycle-stats-panel index-panel">
+        <h3><span style="color: #3b82f6;">●</span> Index Cycles (Low-High-Low)</h3>
+        <div class="stats-content">
+            <div class="stats-metrics">
+                <div class="metric"><span class="label">Cycles</span><span id="idx-count" class="value">0</span></div>
+                <div class="metric"><span class="label">Avg Duration</span><span id="idx-avg-dur" class="value">-</span>
+                </div>
+                <div class="metric"><span class="label">Max Δ Price</span><span id="idx-max-price"
+                        class="value">-</span></div>
+                <div class="metric"><span class="label">Std Dev</span><span id="idx-std" class="value">-</span></div>
+                <div class="metric"><span class="label">Vol Δ Pre (3/10)</span><span id="idx-vol-pre"
+                        class="value">-</span></div>
+                <div class="metric"><span class="label">Vol Δ Post (3/10)</span><span id="idx-vol-post"
+                        class="value">-</span></div>
+            </div>
+            <div class="stats-charts">
+                <div class="chart-box">
+                    <span class="chart-label">Duration Trend</span>
+                    <canvas id="idx-trend-chart" width="300" height="100"></canvas>
+                </div>
+                <div class="chart-box">
+                    <span class="chart-label">Distribution</span>
+                    <canvas id="idx-dist-chart" width="150" height="50"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Inverse Cycles Stats Panel -->
+    <div id="inverse-stats-panel" class="cycle-stats-panel inverse-panel">
+        <h3><span style="color: #ef4444;">●</span> Inverse Cycles (High-Low-High)</h3>
+        <div class="stats-content">
+            <div class="stats-metrics">
+                <div class="metric"><span class="label">Cycles</span><span id="inv-count" class="value">0</span></div>
+                <div class="metric"><span class="label">Avg Duration</span><span id="inv-avg-dur" class="value">-</span>
+                </div>
+                <div class="metric"><span class="label">Max Δ Price</span><span id="inv-max-price"
+                        class="value">-</span></div>
+                <div class="metric"><span class="label">Std Dev</span><span id="inv-std" class="value">-</span></div>
+                <div class="metric"><span class="label">Vol Δ Pre (3/10)</span><span id="inv-vol-pre"
+                        class="value">-</span></div>
+                <div class="metric"><span class="label">Vol Δ Post (3/10)</span><span id="inv-vol-post"
+                        class="value">-</span></div>
+            </div>
+            <div class="stats-charts">
+                <div class="chart-box">
+                    <span class="chart-label">Duration Trend</span>
+                    <canvas id="inv-trend-chart" width="300" height="100"></canvas>
+                </div>
+                <div class="chart-box">
+                    <span class="chart-label">Distribution</span>
+                    <canvas id="inv-dist-chart" width="150" height="50"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="chart-container">
+        <div id="loading" class="loading">
+            <div class="spinner"></div>
+            <p>Loading chart data...</p>
+        </div>
+        <canvas id="chart-canvas"></canvas>
+        <div id="price-info" class="price-info">
+            <div class="info-row">
+                <span class="info-label">Open:</span>
+                <span id="info-open" class="info-value">-</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">High:</span>
+                <span id="info-high" class="info-value">-</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Low:</span>
+                <span id="info-low" class="info-value">-</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Close:</span>
+                <span id="info-close" class="info-value">-</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Time:</span>
+                <span id="info-time" class="info-value">-</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="instructions">
+        <h2>Controls</h2>
+        <div class="instruction-grid">
+            <div class="instruction-item">
+                <span class="icon">🖱️</span>
+                <div>
+                    <strong>Mouse Wheel</strong>
+                    <p>Zoom in/out on timeline</p>
+                </div>
+            </div>
+            <div class="instruction-item">
+                <span class="icon">✋</span>
+                <div>
+                    <strong>Click & Drag</strong>
+                    <p>Pan through chart history</p>
+                </div>
+            </div>
+            <div class="instruction-item">
+                <span class="icon">⌨️</span>
+                <div>
+                    <strong>Shift + Wheel</strong>
+                    <p>Stretch/compress price scale</p>
+                </div>
+            </div>
+            <div class="instruction-item">
+                <span class="icon">📍</span>
+                <div>
+                    <strong>Hover</strong>
+                    <p>View OHLC details</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="cycle_detector.js"></script>
+    <script src="chart.js"></script>
+    <script src="cycle_momentum.js"></script>
+    <script src="main.js"></script>
+</body>
+
+</html>
+```
