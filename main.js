@@ -58,6 +58,16 @@ function setupEventListeners() {
         loadChartData();
     });
 
+    // Vertical Scale Slider
+    const vScaleSlider = document.getElementById('v-scale');
+    const vScaleValue = document.getElementById('v-scale-value');
+    vScaleSlider.addEventListener('input', (e) => {
+        const value = parseInt(e.target.value);
+        vScaleValue.textContent = value + '%';
+        chart.verticalZoom = value / 100;
+        chart.render();
+    });
+
     // Cycle Indicator Controls
     const updateConfig = () => {
         chart.updateConfig({
@@ -398,6 +408,7 @@ function updateStatistics(cycles, invertedCyclesForTarget = null) {
         const volPostEl = document.getElementById(`${prefix}-vol-post`);
         const trendCanvas = document.getElementById(`${prefix}-trend-chart`);
         const distCanvas = document.getElementById(`${prefix}-dist-chart`);
+        const volCanvas = document.getElementById(`${prefix}-vol-chart`);
 
         if (!cycleSet || cycleSet.length === 0) {
             countEl.textContent = '0';
@@ -408,6 +419,7 @@ function updateStatistics(cycles, invertedCyclesForTarget = null) {
             volPostEl.textContent = '-';
             clearCanvas(trendCanvas);
             clearCanvas(distCanvas);
+            clearCanvas(volCanvas);
             return null;
         }
 
@@ -430,8 +442,12 @@ function updateStatistics(cycles, invertedCyclesForTarget = null) {
         const maxPriceVar = Math.max(...priceVariations);
 
         // Volume Delta (3 bars vs 10 bars before/after cycle close)
+        // Collect per-cycle data for the chart
+        const volPreData = [];
+        const volPostData = [];
         let totalVolPre = 0, totalVolPost = 0, volCount = 0;
-        cycleSet.slice(-10).forEach(cycle => {
+
+        cycleSet.forEach(cycle => {
             const closeIndex = cycle.endIndex;
             if (closeIndex < 13 || closeIndex > candles.length - 4) return;
 
@@ -442,18 +458,23 @@ function updateStatistics(cycles, invertedCyclesForTarget = null) {
             for (let i = 4; i <= 13; i++) vol10Pre += candles[closeIndex - i]?.volume || 0;
             vol10Pre /= 10;
 
+            let deltaPre = 0, deltaPost = 0;
             if (vol10Pre > 0) {
-                totalVolPre += ((vol3Pre - vol10Pre) / vol10Pre) * 100;
+                deltaPre = ((vol3Pre - vol10Pre) / vol10Pre) * 100;
+                totalVolPre += deltaPre;
             }
 
-            // 3 bars after close vs baseline (use same 10 bars before for comparison)
+            // 3 bars after close vs baseline
             let vol3Post = 0;
             for (let i = 1; i <= 3; i++) vol3Post += candles[closeIndex + i]?.volume || 0;
             vol3Post /= 3;
             if (vol10Pre > 0) {
-                totalVolPost += ((vol3Post - vol10Pre) / vol10Pre) * 100;
+                deltaPost = ((vol3Post - vol10Pre) / vol10Pre) * 100;
+                totalVolPost += deltaPost;
             }
 
+            volPreData.push(deltaPre);
+            volPostData.push(deltaPost);
             volCount++;
         });
 
@@ -473,6 +494,7 @@ function updateStatistics(cycles, invertedCyclesForTarget = null) {
         // Draw charts
         drawTrendChart(trendCanvas, durations);
         drawDistributionChart(distCanvas, durations);
+        drawVolumeChart(volCanvas, volPreData, volPostData);
 
         return { avgDuration, stdDev };
     };
@@ -592,6 +614,82 @@ function drawTrendChart(canvas, durations) {
     ctx.font = '9px Inter, sans-serif';
     ctx.textAlign = 'left';
     ctx.fillText('Rolling 5', leftPadding + 2, padding + 8);
+}
+
+function drawVolumeChart(canvas, preData, postData) {
+    if (!canvas || preData.length < 2) {
+        clearCanvas(canvas);
+        return;
+    }
+
+    const ctx = canvas.getContext('2d');
+    const width = canvas.width;
+    const height = canvas.height;
+    ctx.clearRect(0, 0, width, height);
+
+    // Combine data to find range
+    const allData = [...preData, ...postData];
+    const min = Math.min(...allData, 0) * 1.1;
+    const max = Math.max(...allData, 0) * 1.1;
+    const range = (max - min) || 1;
+
+    const leftPadding = 30;
+    const padding = 8;
+    const plotWidth = width - leftPadding - padding;
+    const plotHeight = height - padding * 2;
+    const xStep = plotWidth / (preData.length - 1 || 1);
+
+    // Draw zero line
+    const zeroY = padding + plotHeight - ((0 - min) / range) * plotHeight;
+    ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath();
+    ctx.moveTo(leftPadding, zeroY);
+    ctx.lineTo(width - padding, zeroY);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Draw scale
+    ctx.fillStyle = '#9ca3af';
+    ctx.font = '9px Inter, sans-serif';
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(Math.round(max) + '%', leftPadding - 3, padding);
+    ctx.fillText('0%', leftPadding - 3, zeroY);
+    ctx.fillText(Math.round(min) + '%', leftPadding - 3, height - padding);
+
+    // Draw Pre line (green)
+    ctx.strokeStyle = '#10b981';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    preData.forEach((d, i) => {
+        const x = leftPadding + i * xStep;
+        const y = padding + plotHeight - ((d - min) / range) * plotHeight;
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+
+    // Draw Post line (red/orange)
+    ctx.strokeStyle = '#f59e0b';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    postData.forEach((d, i) => {
+        const x = leftPadding + i * xStep;
+        const y = padding + plotHeight - ((d - min) / range) * plotHeight;
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+
+    // Legend
+    ctx.font = '8px Inter, sans-serif';
+    ctx.fillStyle = '#10b981';
+    ctx.textAlign = 'left';
+    ctx.fillText('Pre', leftPadding + 2, padding + 6);
+    ctx.fillStyle = '#f59e0b';
+    ctx.fillText('Post', leftPadding + 25, padding + 6);
 }
 
 function drawDistributionChart(canvas, durations) {

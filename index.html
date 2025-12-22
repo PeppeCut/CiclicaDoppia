@@ -85,6 +85,16 @@
                     <span style="font-size: 0.75rem; color:#9ca3af;">bars</span>
                 </div>
 
+                <div style="width:1px; height:24px; background:rgba(255,255,255,0.1);"></div>
+
+                <!-- Vertical Scale -->
+                <div style="display:flex; gap:0.5rem; align-items:center;">
+                    <span style="font-size: 0.75rem; color:#9ca3af;">V-Scale:</span>
+                    <input type="range" id="v-scale" min="50" max="300" value="100"
+                        style="width: 80px; accent-color: #6366f1;">
+                    <span id="v-scale-value" style="font-size: 0.75rem; color:#9ca3af; min-width: 30px;">100%</span>
+                </div>
+
                 <div style="flex:1;"></div>
 
                 <!-- Actions -->
@@ -134,7 +144,11 @@
                 </div>
                 <div class="chart-box">
                     <span class="chart-label">Distribution</span>
-                    <canvas id="idx-dist-chart" width="150" height="50"></canvas>
+                    <canvas id="idx-dist-chart" width="300" height="100"></canvas>
+                </div>
+                <div class="chart-box">
+                    <span class="chart-label">Volume Δ (Pre/Post)</span>
+                    <canvas id="idx-vol-chart" width="300" height="100"></canvas>
                 </div>
             </div>
         </div>
@@ -163,7 +177,11 @@
                 </div>
                 <div class="chart-box">
                     <span class="chart-label">Distribution</span>
-                    <canvas id="inv-dist-chart" width="150" height="50"></canvas>
+                    <canvas id="inv-dist-chart" width="300" height="100"></canvas>
+                </div>
+                <div class="chart-box">
+                    <span class="chart-label">Volume Δ (Pre/Post)</span>
+                    <canvas id="inv-vol-chart" width="300" height="100"></canvas>
                 </div>
             </div>
         </div>

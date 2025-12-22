@@ -474,22 +474,29 @@ label {
 
 .stats-charts {
     display: flex;
-    gap: 1rem;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+    justify-content: flex-start;
 }
 
 .chart-box {
     display: flex;
     flex-direction: column;
     align-items: center;
+    flex: 0 0 auto;
 }
 
 .chart-box .chart-label {
-    font-size: 0.65rem;
+    font-size: 0.7rem;
     color: var(--text-secondary);
-    margin-bottom: 4px;
+    margin-bottom: 6px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
 }
 
 .chart-box canvas {
-    background: rgba(0, 0, 0, 0.2);
-    border-radius: 4px;
+    background: rgba(0, 0, 0, 0.25);
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
 }
