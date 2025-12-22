@@ -481,11 +481,21 @@ function updateStatistics(cycles, invertedCyclesForTarget = null) {
         const avgVolPre = volCount > 0 ? totalVolPre / volCount : 0;
         const avgVolPost = volCount > 0 ? totalVolPost / volCount : 0;
 
+        // Calculate First→End (bars from first valid close position to actual close)
+        // minDuration is available from the outer scope
+        const minDuration = parseInt(document.getElementById('custom-min').value) || 24;
+        const firstEndDeltas = cycleSet.map(c => c.duration - minDuration).filter(d => d >= 0);
+        const avgFirstEnd = firstEndDeltas.length > 0
+            ? firstEndDeltas.reduce((a, b) => a + b, 0) / firstEndDeltas.length
+            : 0;
+
         // Update DOM
+        const firstEndEl = document.getElementById(`${prefix}-first-end`);
         countEl.textContent = cycleSet.length;
         avgDurEl.textContent = avgDuration.toFixed(1) + ' bars';
         maxPriceEl.textContent = maxPriceVar.toFixed(2) + '%';
         stdEl.textContent = stdDev.toFixed(1);
+        firstEndEl.textContent = avgFirstEnd.toFixed(1) + ' bars';
         volPreEl.textContent = (avgVolPre >= 0 ? '+' : '') + avgVolPre.toFixed(1) + '%';
         volPreEl.style.color = avgVolPre >= 0 ? '#10b981' : '#ef4444';
         volPostEl.textContent = (avgVolPost >= 0 ? '+' : '') + avgVolPost.toFixed(1) + '%';
