@@ -64,10 +64,27 @@ class CandlestickChart {
         // Manual Cycle State
         this.manualMode = false;
         this.manualPoints = []; // Array of {index, price, time}
+
         this.onManualCycleComplete = null; // Callback function
+
+        // Closure Markers (Persistent 'S')
+
+
+        // Closure Markers (Persistent 'S')
+        this.closureMarkers = new Set(); // Set of timestamps
 
         this.setupCanvas();
         this.attachEventListeners();
+    }
+
+    addClosureMarkers(timestamps) {
+        timestamps.forEach(ts => this.closureMarkers.add(ts));
+        this.render();
+    }
+
+    clearClosureMarkers() {
+        this.closureMarkers.clear();
+        this.render();
     }
 
     setupCanvas() {
@@ -232,7 +249,8 @@ class CandlestickChart {
             this.rangeEndLine = {
                 index: cycleStartIndex + maxDuration,
                 cycleStart: cycleStartIndex,
-                maxDuration: maxDuration
+                maxDuration: maxDuration,
+                color: arguments[2] // Optional color argument
             };
         } else {
             this.rangeEndLine = null;
@@ -312,6 +330,7 @@ class CandlestickChart {
             ctx.font = '14px Inter';
             ctx.textAlign = 'center';
             ctx.fillText('No data available', rect.width / 2, rect.height / 2);
+
             return;
         }
 
@@ -337,6 +356,22 @@ class CandlestickChart {
         // Draw range end line (vertical line at cycle max duration)
         if (this.rangeEndLine) {
             this.drawRangeEndLine(candleWidth, candleSpacing, startIndex);
+        }
+
+        // Draw Closure Markers ('S')
+        if (this.closureMarkers.size > 0) {
+            ctx.fillStyle = this.colors.textPrimary;
+            // ctx.font = 'bold 12px Inter'; // Font might need to be set
+            ctx.font = 'bold 12px Inter';
+            ctx.textAlign = 'center';
+
+            this.visibleData.forEach((candle, i) => {
+                if (this.closureMarkers.has(candle.time)) {
+                    const x = this.padding.left + (i * (candleWidth + candleSpacing)) + this.panOffset % (candleWidth + candleSpacing);
+                    const y = this.priceToY(candle.high, priceRange) - 15;
+                    ctx.fillText('S', x, y);
+                }
+            });
         }
 
         // Draw candlesticks
@@ -372,7 +407,6 @@ class CandlestickChart {
                 ctx.stroke();
             });
         }
-
 
 
         // Draw axes
@@ -673,7 +707,8 @@ class CandlestickChart {
         const x = this.padding.left + ((rangeEndIndex - startIndex) * (candleWidth + candleSpacing)) + this.panOffset % (candleWidth + candleSpacing);
 
         // Draw vertical dashed line
-        ctx.strokeStyle = '#f59e0b'; // Amber/Orange
+        const lineColor = this.rangeEndLine.color || '#f59e0b'; // Use passed color or default Amber
+        ctx.strokeStyle = lineColor;
         ctx.lineWidth = 2;
         ctx.setLineDash([8, 4]);
         ctx.beginPath();
@@ -683,7 +718,7 @@ class CandlestickChart {
         ctx.setLineDash([]);
 
         // Draw label at top
-        ctx.fillStyle = '#f59e0b';
+        ctx.fillStyle = lineColor;
         ctx.font = 'bold 10px Inter';
         ctx.textAlign = 'center';
 

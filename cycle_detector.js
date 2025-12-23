@@ -136,7 +136,7 @@ class CycleDetector {
             // Fallback if no intermediate bars (shouldn't happen with min duration check, but manual might be short)
             if (extremumIndex === -1) extremumIndex = Math.floor((startIndex + endIndex) / 2);
 
-            return this.buildCycle(candles, startIndex, extremumIndex, endIndex, invert);
+            return this.buildCycle(candles, startIndex, extremumIndex, endIndex, invert, endIndex);
         } else {
             // Find Min Low
             let minLow = Infinity;
@@ -148,7 +148,7 @@ class CycleDetector {
             }
             if (extremumIndex === -1) extremumIndex = Math.floor((startIndex + endIndex) / 2);
 
-            return this.buildCycle(candles, startIndex, extremumIndex, endIndex, invert);
+            return this.buildCycle(candles, startIndex, extremumIndex, endIndex, invert, endIndex);
         }
     }
 
@@ -253,20 +253,24 @@ class CycleDetector {
             return false;
         };
 
+        // Track first potential end
+        let firstValidEnd = null;
+
         // 1. Priority: Check exactly at minDuration (minEndIndex) IF priority is enabled
         if (priorityMinDuration && minEndIndex <= maxEndIndex) {
             const checkMin = isValidEnd(minEndIndex);
             if (checkMin) {
+                if (firstValidEnd === null) firstValidEnd = minEndIndex;
                 // Per cicli normali, verifica che sia una candela verde
                 if (!invert) {
                     const isGreen = candles[minEndIndex].close > candles[minEndIndex].open;
                     if (isGreen) {
-                        return this.buildCycle(candles, startIndex, checkMin.minIndex, minEndIndex, invert);
+                        return this.buildCycle(candles, startIndex, checkMin.minIndex, minEndIndex, invert, firstValidEnd);
                     }
                     // Se non è verde, continua la ricerca normale
                 } else {
                     // Per cicli invertiti, usa la logica normale
-                    return this.buildCycle(candles, startIndex, checkMin.minIndex, minEndIndex, invert);
+                    return this.buildCycle(candles, startIndex, checkMin.minIndex, minEndIndex, invert, firstValidEnd);
                 }
             }
         }
@@ -282,6 +286,7 @@ class CycleDetector {
         for (let j = loopStart; j <= maxEndIndex; j++) {
             const check = isValidEnd(j);
             if (check) {
+                if (firstValidEnd === null) firstValidEnd = j;
                 // Found a valid end. Compare Extremum (High/Low) instead of Close.
                 if (invert) {
                     // Inverted Cycle: End is a Local Min. We want the LOWEST Low.
@@ -315,13 +320,13 @@ class CycleDetector {
         }
 
         if (bestCandidate) {
-            return this.buildCycle(candles, startIndex, bestCandidate.minIndex, bestCandidate.endIndex, invert);
+            return this.buildCycle(candles, startIndex, bestCandidate.minIndex, bestCandidate.endIndex, invert, firstValidEnd);
         }
 
         return null;
     }
 
-    buildCycle(candles, startIndex, minIndex, endIndex, invert) {
+    buildCycle(candles, startIndex, minIndex, endIndex, invert, firstPotentialEnd = endIndex) {
         if (invert) {
             return {
                 startIndex: startIndex,
@@ -332,6 +337,7 @@ class CycleDetector {
                 startPrice: candles[startIndex].low,
                 maxPrice: candles[minIndex].high,
                 endPrice: candles[endIndex].low,
+                firstPotentialEnd: firstPotentialEnd,
                 type: 'inverted'
             };
         } else {
@@ -344,6 +350,7 @@ class CycleDetector {
                 startPrice: candles[startIndex].high,
                 minPrice: candles[minIndex].low,
                 endPrice: candles[endIndex].high,
+                firstPotentialEnd: firstPotentialEnd,
                 type: 'normal'
             };
         }

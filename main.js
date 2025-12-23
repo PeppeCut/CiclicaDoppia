@@ -7,6 +7,8 @@ let currentTimeframe = '1m';
 let isLoading = false;
 let currentManualCycle = null; // {startIndex, endIndex}
 
+
+
 // Timeframe mapping for Binance API
 const timeframeMap = {
     '1m': '1m',
@@ -27,6 +29,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     setupEventListeners();
     loadChartData();
+
+    // Auto-refresh every 5 seconds
+    setInterval(() => {
+        loadChartData(true);
+    }, 5000);
 });
 
 function setupEventListeners() {
@@ -197,11 +204,11 @@ function makeDraggable(element) {
 
 let ws = null;
 
-async function loadChartData() {
+async function loadChartData(isBackground = false) {
     if (isLoading) return;
 
     isLoading = true;
-    showLoading();
+    if (!isBackground) showLoading();
 
     try {
         const interval = timeframeMap[currentTimeframe];
@@ -236,13 +243,17 @@ async function loadChartData() {
 
         hideLoading();
 
-        // Start WebSocket for live updates
-        startWebSocket(currentSymbol, interval);
+        // Start WebSocket for live updates (only if not background, or check if WS exists)
+        if (!isBackground) {
+            startWebSocket(currentSymbol, interval);
+        }
 
     } catch (error) {
         console.error('Error loading chart data:', error);
-        hideLoading();
-        showError(`Failed to load chart data: ${error.message}`);
+        if (!isBackground) {
+            hideLoading();
+            showError(`Failed to load chart data: ${error.message}`);
+        }
     } finally {
         isLoading = false;
     }
@@ -326,7 +337,11 @@ function recalculateIndicatorsAndCycles(candlesticks) {
         // Show line if cycle is still within range (not yet at max)
         // Line disappears when current bar reaches max duration
         if (currentBarIndex < cycleEndAtMax) {
-            chart.setRangeEndLine(lastCycle.startIndex, maxDuration);
+            const isIndex = lastCycle.type === 'inverted'; // Inverted (Low-High-Low)
+            const rangeColor = isIndex ? '#3b82f6' : '#ef4444'; // Blue for Index, Red for Normal (Inverse)
+
+            // Assuming chart.setRangeEndLine supports 3rd argument for color
+            chart.setRangeEndLine(lastCycle.startIndex, maxDuration, rangeColor);
         } else {
             chart.setRangeEndLine(null, null);
         }
@@ -335,6 +350,17 @@ function recalculateIndicatorsAndCycles(candlesticks) {
     }
 
     updateStatistics(cycles, invertedCyclesForTarget);
+
+    // Update Closure Markers ('S' Persistent)
+    // Use firstPotentialEnd from cycles
+    const closureTimestamps = cycles.map(c => {
+        // use firstPotentialEnd if available, else fallback to endIndex
+        const potentialEnd = (c.firstPotentialEnd !== undefined && c.firstPotentialEnd !== null) ? c.firstPotentialEnd : c.endIndex;
+        return candlesticks[potentialEnd]?.time;
+    }).filter(t => t);
+
+    chart.clearClosureMarkers();
+    chart.addClosureMarkers(closureTimestamps);
 }
 
 function startWebSocket(symbol, interval) {
@@ -483,8 +509,10 @@ function updateStatistics(cycles, invertedCyclesForTarget = null) {
 
         // Calculate First→End (bars from first valid close position to actual close)
         // minDuration is available from the outer scope
-        const minDuration = parseInt(document.getElementById('custom-min').value) || 24;
-        const firstEndDeltas = cycleSet.map(c => c.duration - minDuration).filter(d => d >= 0);
+        const firstEndDeltas = cycleSet.map(c => {
+            const firstEnd = c.firstPotentialEnd || c.endIndex;
+            return c.endIndex - firstEnd;
+        }).filter(d => d >= 0);
         const avgFirstEnd = firstEndDeltas.length > 0
             ? firstEndDeltas.reduce((a, b) => a + b, 0) / firstEndDeltas.length
             : 0;

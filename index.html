@@ -70,6 +70,8 @@
                             type="checkbox" id="show-projections" checked> Proj</label>
                     <label style="font-size: 0.8rem; color:#9ca3af; display:flex; align-items:center; gap:3px;"><input
                             type="checkbox" id="use-momentum-rule" checked> Mom Filter</label>
+                    <label style="font-size: 0.8rem; color:#9ca3af; display:flex; align-items:center; gap:3px;"><input
+                            type="checkbox" id="priority-24-bars" checked> Force 24 Bars</label>
                 </div>
 
                 <div style="width:1px; height:24px; background:rgba(255,255,255,0.1);"></div>
@@ -112,7 +114,7 @@
                 <input type="number" id="mom-min" value="5">
                 <input type="number" id="mom-max" value="60">
                 <input type="checkbox" id="show-min" checked>
-                <input type="checkbox" id="priority-24-bars" checked>
+                <!-- priority-24-bars moved to visible controls -->
                 <button id="manual-mode-btn">Set Manual</button>
                 <button id="clear-manual-btn">Clear</button>
             </div>
